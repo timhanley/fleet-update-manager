@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fleet Admin</title>
+<style>
+  :root {
+    --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a; --surface3: #2a2f45;
+    --ok: #22c55e; --warn: #f59e0b; --err: #ef4444; --muted: #6b7280;
+    --text: #e5e7eb; --text2: #9ca3af; --border: #2d3148;
+    --accent: #6366f1; --accent2: #818cf8;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; min-height: 100vh; }
+  a { color: var(--accent2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* Header */
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; align-items: center; gap: 20px; }
+  header h1 { font-size: 18px; font-weight: 700; }
+  header .back-link { color: var(--text2); font-size: 13px; display: flex; align-items: center; gap: 6px; margin-right: auto; }
+  header .back-link:hover { color: var(--text); text-decoration: none; }
+
+  /* Container */
+  .container { max-width: 1100px; margin: 0 auto; padding: 28px 32px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 28px; border-bottom: 1px solid var(--border); padding-bottom: 0; }
+  .tab-btn {
+    background: none; border: none; color: var(--text2); padding: 10px 20px;
+    font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent;
+    margin-bottom: -1px; font-weight: 500; transition: color .15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent2); border-bottom-color: var(--accent); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Sections */
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; margin-bottom: 20px; }
+  .section h2 { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+  .section h3 { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 12px; margin-top: 20px; }
+  .section h3:first-child { margin-top: 0; }
+
+  /* Tab header with action button */
+  .tab-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .tab-header h2 { font-size: 16px; font-weight: 700; }
+
+  /* Alert */
+  #alert { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; display: none; }
+  #alert.success { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.3); color: var(--ok); }
+  #alert.error   { background: rgba(239,68,68,.12);  border: 1px solid rgba(239,68,68,.3);  color: var(--err); }
+  #alert.info    { background: rgba(99,102,241,.12);  border: 1px solid rgba(99,102,241,.3); color: var(--accent2); }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: opacity .15s; white-space: nowrap; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary  { background: var(--accent); color: #fff; }
+  .btn-primary:hover:not(:disabled)  { opacity: .85; }
+  .btn-secondary { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); }
+  .btn-secondary:hover:not(:disabled) { color: var(--text); background: var(--surface3); }
+  .btn-danger   { background: rgba(239,68,68,.15); color: var(--err); border: 1px solid rgba(239,68,68,.3); }
+  .btn-danger:hover:not(:disabled)   { background: rgba(239,68,68,.25); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 5px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+
+  /* Forms / fields */
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .04em; }
+  .field input[type="text"],
+  .field input[type="number"],
+  .field select,
+  .field textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 9px 12px; color: var(--text); font-size: 13px;
+    font-family: inherit; transition: border-color .15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: var(--accent);
+  }
+  .field textarea { resize: vertical; min-height: 80px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; }
+  .field .help-text { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .field.inline { display: flex; align-items: center; gap: 10px; }
+  .field.inline label { margin-bottom: 0; min-width: 180px; }
+  .field.inline input[type="number"] { width: 100px; }
+  .toggle-label { display: flex !important; align-items: center; gap: 8px; cursor: pointer; color: var(--text) !important; font-size: 13px !important; text-transform: none !important; letter-spacing: 0 !important; font-weight: 500 !important; }
+  .toggle-label input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
+
+  /* Devices table */
+  .devices-table { width: 100%; border-collapse: collapse; }
+  .devices-table th { background: var(--surface2); padding: 10px 14px; text-align: left; font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; font-weight: 600; }
+  .devices-table td { padding: 11px 14px; border-top: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
+  .devices-table tr:hover td { background: rgba(255,255,255,.02); }
+  .badge-enabled  { background: rgba(34,197,94,.12);  color: var(--ok);  font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+  .badge-disabled { background: rgba(107,114,128,.12); color: var(--muted); font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+  .host-cell { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: var(--text2); }
+  .action-cell { display: flex; gap: 6px; }
+  .empty-row td { text-align: center; padding: 28px; color: var(--muted); }
+
+  /* SSH key display */
+  .pubkey-box {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+    padding: 12px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px;
+    color: var(--text2); word-break: break-all; line-height: 1.5;
+  }
+  .pubkey-placeholder { color: var(--muted); font-style: italic; }
+
+  /* Device setup list */
+  .setup-device-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .setup-device-row:last-child { border-bottom: none; }
+  .setup-device-info { display: flex; flex-direction: column; gap: 2px; }
+  .setup-device-name { font-weight: 600; font-size: 13px; }
+  .setup-device-host { font-size: 12px; color: var(--text2); font-family: 'SF Mono', 'Fira Code', monospace; }
+
+  /* Output panel */
+  .output-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 20px; display: none; }
+  .output-panel.visible { display: block; }
+  .output-header { background: var(--surface2); padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+  .output-header span { font-size: 13px; font-weight: 600; }
+  .output-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; line-height: 1; padding: 0 4px; }
+  .output-close:hover { color: var(--text); }
+  .output-log { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; padding: 14px 16px; max-height: 380px; overflow-y: auto; line-height: 1.6; white-space: pre-wrap; word-break: break-all; color: #d1d5db; }
+  .ok-line   { color: var(--ok); }
+  .err-line  { color: var(--err); }
+  .warn-line { color: var(--warn); }
+  .dim-line  { color: var(--muted); }
+
+  /* Schedule */
+  .next-run-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .next-run-icon { font-size: 22px; }
+  .next-run-label { font-size: 12px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  .next-run-val { font-size: 15px; font-weight: 600; margin-top: 2px; }
+  .next-run-val.disabled { color: var(--muted); font-weight: 400; }
+  .warn-box { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.2); border-radius: 8px; padding: 12px 16px; font-size: 13px; color: var(--warn); margin-bottom: 16px; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal-overlay.hidden { display: none; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; width: 480px; max-width: 95vw; }
+  .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+
+  /* Confirm dialog */
+  .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; z-index: 200; }
+  .confirm-overlay.hidden { display: none; }
+  .confirm-box { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px; width: 360px; max-width: 95vw; }
+  .confirm-box p { color: var(--text2); font-size: 13px; margin: 8px 0 20px; }
+  .confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; padding: 32px; border-top: 1px solid var(--border); margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚙ Fleet Admin</h1>
+  <a href="/" class="back-link">← Back to Dashboard</a>
+</header>
+
+<div class="container">
+  <div id="alert"></div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('devices')">Devices</button>
+    <button class="tab-btn" onclick="showTab('settings')">Settings</button>
+    <button class="tab-btn" onclick="showTab('ssh')">SSH Keys</button>
+    <button class="tab-btn" onclick="showTab('schedule')">Schedule</button>
+  </div>
+
+  <!-- ── Devices Tab ──────────────────────────────────────────────────────── -->
+  <div id="tab-devices" class="tab-content active">
+    <div class="tab-header">
+      <h2>Fleet Devices</h2>
+      <button class="btn btn-primary" onclick="openModal(-1)">+ Add Device</button>
+    </div>
+    <div class="section" style="padding: 0; overflow: hidden;">
+      <table class="devices-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Host</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="devices-tbody">
+          <tr class="empty-row"><td colspan="5">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Settings Tab ─────────────────────────────────────────────────────── -->
+  <div id="tab-settings" class="tab-content">
+    <div class="section">
+      <h2>Update Settings</h2>
+      <div class="field inline">
+        <label>SSH Timeout (seconds)</label>
+        <input type="number" id="set-timeout" min="5" max="600" value="90">
+      </div>
+      <div class="field">
+        <label class="toggle-label">
+          <input type="checkbox" id="set-reboot">
+          Reboot automatically when a reboot is required after updates
+        </label>
+      </div>
+      <div class="field inline">
+        <label>Reboot Delay (minutes)</label>
+        <input type="number" id="set-reboot-delay" min="0" max="60" value="1">
+      </div>
+      <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+    </div>
+  </div>
+
+  <!-- ── SSH Keys Tab ─────────────────────────────────────────────────────── -->
+  <div id="tab-ssh" class="tab-content">
+    <div class="section">
+      <h2>Fleet SSH Key</h2>
+      <p style="color: var(--text2); font-size: 13px; margin-bottom: 14px;">
+        This key is installed on all fleet devices, allowing the update script to connect without a password.
+      </p>
+      <div id="pubkey-box" class="pubkey-box pubkey-placeholder">Loading…</div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="copyPubkey()">📋 Copy Key</button>
+        <button class="btn btn-danger" onclick="confirmGenerateKey()">🔑 Generate New Key Pair</button>
+      </div>
+      <div class="field help-text" style="margin-top: 12px;">
+        ⚠ Generating a new key pair will require re-running SSH Setup on all devices.
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>SSH Setup</h2>
+      <p style="color: var(--text2); font-size: 13px; margin-bottom: 6px;">
+        Pushes the fleet public key to devices. Works automatically when your existing SSH key is already accepted.
+        For devices requiring password authentication, run <code style="background: var(--surface2); padding: 2px 6px; border-radius: 4px;">bash setup-ssh-access.sh</code> from a terminal.
+      </p>
+      <div class="btn-row" style="margin-bottom: 16px;">
+        <button class="btn btn-primary" onclick="runSetup(null)" id="setup-all-btn">▶ Run Setup on All Devices</button>
+      </div>
+      <h3>Per-device</h3>
+      <div id="setup-devices-list"><div style="color: var(--muted);">Loading…</div></div>
+    </div>
+
+    <div id="setup-output-panel" class="output-panel">
+      <div class="output-header">
+        <span>🔄 SSH Setup Output</span>
+        <button class="output-close" onclick="closeSetupPanel()">×</button>
+      </div>
+      <div id="setup-log" class="output-log"></div>
+    </div>
+  </div>
+
+  <!-- ── Schedule Tab ─────────────────────────────────────────────────────── -->
+  <div id="tab-schedule" class="tab-content">
+    <div class="section">
+      <h2>Automatic Update Schedule</h2>
+
+      <div id="no-croniter-warn" class="warn-box" style="display:none">
+        ⚠ <strong>croniter not installed.</strong>
+        Automatic scheduling requires the <code>croniter</code> Python package.
+        Install with: <code>pip3 install croniter</code> — then restart the server.
+        When running via Docker this is handled automatically.
+      </div>
+
+      <div class="field" style="margin-bottom: 20px;">
+        <label class="toggle-label">
+          <input type="checkbox" id="sched-enabled" onchange="updateSchedPreview()">
+          Enable automatic updates
+        </label>
+      </div>
+
+      <div id="sched-fields">
+        <div class="field">
+          <label>Schedule Preset</label>
+          <select id="sched-preset" onchange="onPresetChange()">
+            <option value="0 2 * * 0">Every Sunday at 2:00 AM</option>
+            <option value="0 2 * * 1">Every Monday at 2:00 AM</option>
+            <option value="0 2 * * *">Every night at 2:00 AM</option>
+            <option value="0 3 * * 6">Every Saturday at 3:00 AM</option>
+            <option value="0 0 1 * *">First day of every month at midnight</option>
+            <option value="custom">Custom cron expression…</option>
+          </select>
+        </div>
+
+        <div class="field" id="custom-cron-field" style="display:none">
+          <label>Custom Cron Expression</label>
+          <input type="text" id="sched-cron" placeholder="0 2 * * 0" oninput="updateSchedPreview()">
+          <div class="help-text">Format: <code>minute hour day-of-month month day-of-week</code> &nbsp; (server local time)</div>
+        </div>
+
+        <div class="next-run-box" style="margin-bottom: 20px;">
+          <div class="next-run-icon">🕐</div>
+          <div>
+            <div class="next-run-label">Next scheduled run</div>
+            <div class="next-run-val" id="next-run-display">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveSchedule()">Save Schedule</button>
+        <button class="btn btn-secondary" onclick="triggerManualRun()">▶ Run Updates Now</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add/Edit Device Modal ─────────────────────────────────────────────── -->
+<div id="modal-overlay" class="modal-overlay hidden" onclick="maybeCloseModal(event)">
+  <div class="modal">
+    <h3 id="modal-title">Add Device</h3>
+    <div class="field">
+      <label>Name *</label>
+      <input type="text" id="dev-name" placeholder="e.g. pi1">
+    </div>
+    <div class="field">
+      <label>Host *</label>
+      <input type="text" id="dev-host" placeholder="e.g. pi@raspberry.local">
+    </div>
+    <div class="field">
+      <label>Description</label>
+      <input type="text" id="dev-desc" placeholder="Optional description">
+    </div>
+    <div class="field">
+      <label class="toggle-label">
+        <input type="checkbox" id="dev-enabled" checked>
+        Enabled
+      </label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDevice()">Save Device</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm Dialog ─────────────────────────────────────────────────────── -->
+<div id="confirm-overlay" class="confirm-overlay hidden">
+  <div class="confirm-box">
+    <h3 id="confirm-title">Confirm</h3>
+    <p id="confirm-msg"></p>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" onclick="confirmCancel()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn" onclick="confirmOk()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<footer>Fleet Manager &nbsp;·&nbsp; <a href="/">Dashboard</a></footer>
+
+<script>
+const API = '';   // same origin
+
+// ── State ─────────────────────────────────────────────────────────────────
+let fleetConf = null;
+let editingIndex = -1;    // -1 = new device
+let pubkeyText = '';
+let _confirmCallback = null;
+
+// ── Init ──────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    await loadFleet();
+    loadPubkey();
+    loadSchedule();
+  } catch(e) {
+    showAlert('Failed to load fleet config: ' + e.message, 'error');
+  }
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+function showTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ── Alert ─────────────────────────────────────────────────────────────────
+function showAlert(msg, type = 'success') {
+  const el = document.getElementById('alert');
+  el.className = type;
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+// ── Fleet loading ─────────────────────────────────────────────────────────
+async function loadFleet() {
+  const r = await fetch(API + '/api/fleet');
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  fleetConf = await r.json();
+  renderDevices();
+  renderSettings();
+  renderSetupDevices();
+}
+
+async function saveFleetConf() {
+  const r = await fetch(API + '/api/fleet', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fleetConf),
+  });
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}));
+    throw new Error(d.error || 'HTTP ' + r.status);
+  }
+}
+
+// ── Devices ───────────────────────────────────────────────────────────────
+function renderDevices() {
+  const tbody = document.getElementById('devices-tbody');
+  const devices = fleetConf?.devices || [];
+  if (!devices.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No devices configured yet. Click "+ Add Device" to get started.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = devices.map((d, i) => `
+    <tr>
+      <td><strong>${esc(d.name)}</strong></td>
+      <td class="host-cell">${esc(d.host || '—')}</td>
+      <td>${esc(d.description || '')}</td>
+      <td><span class="badge-${d.enabled !== false ? 'enabled' : 'disabled'}">${d.enabled !== false ? 'Enabled' : 'Disabled'}</span></td>
+      <td>
+        <div class="action-cell">
+          <button class="btn btn-secondary btn-sm" onclick="openModal(${i})">Edit</button>
+          <button class="btn btn-secondary btn-sm" onclick="toggleDevice(${i})">${d.enabled !== false ? 'Disable' : 'Enable'}</button>
+          <button class="btn btn-danger btn-sm" onclick="confirmDelete(${i})">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openModal(index) {
+  editingIndex = index;
+  const title = document.getElementById('modal-title');
+  if (index === -1) {
+    title.textContent = 'Add Device';
+    document.getElementById('dev-name').value = '';
+    document.getElementById('dev-host').value = '';
+    document.getElementById('dev-desc').value = '';
+    document.getElementById('dev-enabled').checked = true;
+  } else {
+    title.textContent = 'Edit Device';
+    const d = fleetConf.devices[index];
+    document.getElementById('dev-name').value = d.name || '';
+    document.getElementById('dev-host').value = d.host || '';
+    document.getElementById('dev-desc').value = d.description || '';
+    document.getElementById('dev-enabled').checked = d.enabled !== false;
+  }
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('dev-name').focus(), 50);
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.add('hidden');
+}
+
+function maybeCloseModal(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+async function saveDevice() {
+  const name = document.getElementById('dev-name').value.trim();
+  const host = document.getElementById('dev-host').value.trim();
+  const desc = document.getElementById('dev-desc').value.trim();
+  const enabled = document.getElementById('dev-enabled').checked;
+
+  if (!name) { showAlert('Name is required', 'error'); return; }
+  if (!host) { showAlert('Host is required', 'error'); return; }
+
+  // Check for duplicate name (except when editing same device)
+  const dupIdx = fleetConf.devices.findIndex((d, i) => d.name === name && i !== editingIndex);
+  if (dupIdx !== -1) { showAlert('A device with that name already exists', 'error'); return; }
+
+  const device = { name, host, description: desc, enabled };
+
+  if (editingIndex === -1) {
+    fleetConf.devices.push(device);
+  } else {
+    fleetConf.devices[editingIndex] = device;
+  }
+
+  try {
+    await saveFleetConf();
+    closeModal();
+    renderDevices();
+    renderSetupDevices();
+    showAlert(editingIndex === -1 ? 'Device added.' : 'Device updated.');
+  } catch(e) {
+    showAlert('Save failed: ' + e.message, 'error');
+    // Revert
+    await loadFleet();
+  }
+}
+
+async function toggleDevice(index) {
+  fleetConf.devices[index].enabled = !(fleetConf.devices[index].enabled !== false);
+  try {
+    await saveFleetConf();
+    renderDevices();
+    renderSetupDevices();
+    showAlert('Device ' + (fleetConf.devices[index].enabled ? 'enabled' : 'disabled') + '.');
+  } catch(e) {
+    showAlert('Save failed: ' + e.message, 'error');
+    await loadFleet();
+  }
+}
+
+function confirmDelete(index) {
+  const name = fleetConf.devices[index].name;
+  showConfirm(
+    'Delete Device',
+    `Remove "${name}" from the fleet? This does not remove the SSH key from the device itself.`,
+    async () => { await deleteDevice(index); }
+  );
+}
+
+async function deleteDevice(index) {
+  fleetConf.devices.splice(index, 1);
+  try {
+    await saveFleetConf();
+    renderDevices();
+    renderSetupDevices();
+    showAlert('Device removed.');
+  } catch(e) {
+    showAlert('Delete failed: ' + e.message, 'error');
+    await loadFleet();
+  }
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────
+function renderSettings() {
+  if (!fleetConf) return;
+  const s = fleetConf.settings || {};
+  document.getElementById('set-timeout').value = s.ssh_timeout_seconds ?? 90;
+  document.getElementById('set-reboot').checked = s.reboot_if_required !== false;
+  document.getElementById('set-reboot-delay').value = s.reboot_delay_minutes ?? 1;
+}
+
+async function saveSettings() {
+  if (!fleetConf) return;
+  if (!fleetConf.settings) fleetConf.settings = {};
+  fleetConf.settings.ssh_timeout_seconds  = parseInt(document.getElementById('set-timeout').value) || 90;
+  fleetConf.settings.reboot_if_required   = document.getElementById('set-reboot').checked;
+  fleetConf.settings.reboot_delay_minutes = parseInt(document.getElementById('set-reboot-delay').value) || 1;
+  try {
+    await saveFleetConf();
+    showAlert('Settings saved.');
+  } catch(e) {
+    showAlert('Save failed: ' + e.message, 'error');
+  }
+}
+
+// ── SSH key ───────────────────────────────────────────────────────────────
+async function loadPubkey() {
+  try {
+    const r = await fetch(API + '/api/ssh/pubkey');
+    const d = await r.json();
+    const box = document.getElementById('pubkey-box');
+    if (d.exists && d.pubkey) {
+      pubkeyText = d.pubkey;
+      box.textContent = d.pubkey;
+      box.classList.remove('pubkey-placeholder');
+    } else {
+      pubkeyText = '';
+      box.innerHTML = '<span class="pubkey-placeholder">No SSH key found. Generate one below.</span>';
+    }
+  } catch(e) {
+    document.getElementById('pubkey-box').textContent = 'Failed to load key.';
+  }
+}
+
+function copyPubkey() {
+  if (!pubkeyText) { showAlert('No key to copy.', 'error'); return; }
+  navigator.clipboard.writeText(pubkeyText).then(() => showAlert('Public key copied to clipboard.'));
+}
+
+function confirmGenerateKey() {
+  showConfirm(
+    'Generate New Key Pair',
+    'This will replace the existing key pair. You will need to re-run SSH Setup on all devices to install the new key.',
+    generateKey
+  );
+}
+
+async function generateKey() {
+  try {
+    const r = await fetch(API + '/api/ssh/generate', { method: 'POST' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+    showAlert('New SSH key pair generated.');
+    loadPubkey();
+  } catch(e) {
+    showAlert('Key generation failed: ' + e.message, 'error');
+  }
+}
+
+function renderSetupDevices() {
+  const list = document.getElementById('setup-devices-list');
+  const devices = fleetConf?.devices || [];
+  if (!devices.length) {
+    list.innerHTML = '<div style="color: var(--muted); padding: 8px 0;">No devices configured.</div>';
+    return;
+  }
+  list.innerHTML = devices.map(d => `
+    <div class="setup-device-row">
+      <div class="setup-device-info">
+        <div class="setup-device-name">${esc(d.name)}</div>
+        <div class="setup-device-host">${esc(d.host || '')}</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="runSetup('${esc(d.name)}')">▶ Setup</button>
+    </div>
+  `).join('');
+}
+
+async function runSetup(deviceName) {
+  if (document.getElementById('setup-output-panel').classList.contains('visible-running')) {
+    showAlert('SSH setup is already running.', 'info'); return;
+  }
+
+  const panel = document.getElementById('setup-output-panel');
+  const log = document.getElementById('setup-log');
+  log.innerHTML = '';
+  panel.classList.add('visible');
+  panel.classList.add('visible-running');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  document.getElementById('setup-all-btn').disabled = true;
+
+  try {
+    const body = deviceName ? JSON.stringify({ devices: [deviceName] }) : null;
+    const r = await fetch(API + '/api/ssh/setup', {
+      method: 'POST',
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      body,
+    });
+    if (r.status === 409) { showAlert('SSH setup already in progress.', 'info'); return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+  } catch(e) {
+    appendSetupLine('Error: ' + e.message, 'err-line');
+    panel.classList.remove('visible-running');
+    document.getElementById('setup-all-btn').disabled = false;
+    return;
+  }
+
+  const es = new EventSource(API + '/api/ssh/setup/stream');
+  es.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.done) {
+      es.close();
+      panel.classList.remove('visible-running');
+      document.getElementById('setup-all-btn').disabled = false;
+      const ok = data.exit_code === 0;
+      appendSetupLine('', '');
+      appendSetupLine(ok ? '✔ Setup complete.' : '✖ Setup finished with errors.', ok ? 'ok-line' : 'err-line');
+      return;
+    }
+    if (data.line !== undefined) appendSetupLine(data.line);
+  };
+  es.onerror = () => {
+    es.close();
+    panel.classList.remove('visible-running');
+    document.getElementById('setup-all-btn').disabled = false;
+    appendSetupLine('Connection lost.', 'err-line');
+  };
+}
+
+function appendSetupLine(text, cls) {
+  const log = document.getElementById('setup-log');
+  const div = document.createElement('div');
+  if (cls) {
+    div.className = cls;
+  } else if (text.startsWith('✔') || text.includes('[INFO]')) {
+    div.className = 'ok-line';
+  } else if (text.startsWith('✖') || text.includes('ERROR') || text.includes('Failed')) {
+    div.className = 'err-line';
+  } else if (text.startsWith('⚠') || text.includes('WARN')) {
+    div.className = 'warn-line';
+  } else if (text.startsWith('===') || text.startsWith('▶') || text.startsWith('─')) {
+    div.className = 'dim-line';
+  }
+  div.textContent = text;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+}
+
+function closeSetupPanel() {
+  document.getElementById('setup-output-panel').classList.remove('visible');
+}
+
+// ── Schedule ──────────────────────────────────────────────────────────────
+let currentCronExpr = '0 2 * * 0';
+
+async function loadSchedule() {
+  try {
+    const r = await fetch(API + '/api/schedule');
+    const d = await r.json();
+
+    if (!d.scheduler_available) {
+      document.getElementById('no-croniter-warn').style.display = 'block';
+    }
+
+    document.getElementById('sched-enabled').checked = !!d.enabled;
+    currentCronExpr = d.cron || '0 2 * * 0';
+
+    // Match preset
+    const presetEl = document.getElementById('sched-preset');
+    const options = Array.from(presetEl.options).map(o => o.value);
+    if (options.includes(currentCronExpr)) {
+      presetEl.value = currentCronExpr;
+      document.getElementById('custom-cron-field').style.display = 'none';
+    } else {
+      presetEl.value = 'custom';
+      document.getElementById('custom-cron-field').style.display = 'block';
+      document.getElementById('sched-cron').value = currentCronExpr;
+    }
+
+    updateNextRunDisplay(d.next_run, d.enabled);
+  } catch(e) {
+    showAlert('Failed to load schedule.', 'error');
+  }
+}
+
+function onPresetChange() {
+  const val = document.getElementById('sched-preset').value;
+  const customField = document.getElementById('custom-cron-field');
+  if (val === 'custom') {
+    customField.style.display = 'block';
+    document.getElementById('sched-cron').focus();
+  } else {
+    customField.style.display = 'none';
+    currentCronExpr = val;
+  }
+  updateSchedPreview();
+}
+
+function updateSchedPreview() {
+  const enabled = document.getElementById('sched-enabled').checked;
+  const preset = document.getElementById('sched-preset').value;
+  const cron = preset === 'custom' ? document.getElementById('sched-cron').value.trim() : preset;
+  updateNextRunDisplay(null, enabled, cron);
+}
+
+function updateNextRunDisplay(nextRunISO, enabled, cron) {
+  const el = document.getElementById('next-run-display');
+  if (!enabled) {
+    el.textContent = 'Scheduling disabled';
+    el.className = 'next-run-val disabled';
+    return;
+  }
+  if (nextRunISO) {
+    el.textContent = formatDateTime(nextRunISO);
+    el.className = 'next-run-val';
+  } else if (cron) {
+    el.textContent = 'Save to calculate next run';
+    el.className = 'next-run-val disabled';
+  } else {
+    el.textContent = '—';
+    el.className = 'next-run-val disabled';
+  }
+}
+
+function getCronDescription(cron) {
+  const presets = {
+    '0 2 * * 0': 'Every Sunday at 2:00 AM',
+    '0 2 * * 1': 'Every Monday at 2:00 AM',
+    '0 2 * * *': 'Every night at 2:00 AM',
+    '0 3 * * 6': 'Every Saturday at 3:00 AM',
+    '0 0 1 * *': 'First day of every month at midnight',
+  };
+  return presets[cron] || cron;
+}
+
+async function saveSchedule() {
+  const enabled = document.getElementById('sched-enabled').checked;
+  const preset = document.getElementById('sched-preset').value;
+  const cron = preset === 'custom'
+    ? document.getElementById('sched-cron').value.trim()
+    : preset;
+
+  if (!cron) { showAlert('Please enter a cron expression.', 'error'); return; }
+
+  const description = getCronDescription(cron);
+
+  try {
+    const r = await fetch(API + '/api/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled, cron, description }),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+    showAlert('Schedule saved.');
+    updateNextRunDisplay(d.next_run, enabled);
+    // Also update fleet.conf in memory
+    if (fleetConf) {
+      fleetConf.schedule = { enabled, cron, description };
+    }
+  } catch(e) {
+    showAlert('Save failed: ' + e.message, 'error');
+  }
+}
+
+async function triggerManualRun() {
+  try {
+    const r = await fetch(API + '/api/run-updates', { method: 'POST' });
+    if (r.status === 409) { showAlert('Update already in progress.', 'info'); return; }
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    showAlert('Fleet update started. Check the dashboard for live output.', 'info');
+  } catch(e) {
+    showAlert('Failed to trigger run: ' + e.message, 'error');
+  }
+}
+
+// ── Confirm dialog ────────────────────────────────────────────────────────
+function showConfirm(title, msg, callback) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  _confirmCallback = callback;
+  document.getElementById('confirm-overlay').classList.remove('hidden');
+}
+
+function confirmOk() {
+  document.getElementById('confirm-overlay').classList.add('hidden');
+  if (_confirmCallback) { _confirmCallback(); _confirmCallback = null; }
+}
+
+function confirmCancel() {
+  document.getElementById('confirm-overlay').classList.add('hidden');
+  _confirmCallback = null;
+}
+
+// ── Utility ───────────────────────────────────────────────────────────────
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatDateTime(iso) {
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  } catch { return iso; }
+}
+
+// Handle hash for direct tab linking
+function handleHash() {
+  const hash = location.hash.replace('#', '');
+  if (hash && document.getElementById('tab-' + hash)) {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.toggle('active', b.getAttribute('onclick')?.includes("'" + hash + "'"));
+    });
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.getElementById('tab-' + hash).classList.add('active');
+  }
+}
+
+handleHash();
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+services:
+  fleet-manager:
+    build: .
+    container_name: fleet-manager
+    ports:
+      - "8484:8484"
+    volumes:
+      # Named Docker volume – persists fleet.conf, SSH keys, logs, and the
+      # generated dashboard across container rebuilds and restarts.
+      - fleet-data:/data
+    restart: unless-stopped
+    # Uncomment to pass your host SSH agent into the container so setup-ssh-access.sh
+    # can use your personal key to push the fleet key to new devices.
+    # environment:
+    #   - SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock
+    # volumes (add alongside fleet-data):
+    #   - /run/host-services/ssh-auth.sock:/run/host-services/ssh-auth.sock:ro
+
+volumes:
+  fleet-data:
+    driver: local
