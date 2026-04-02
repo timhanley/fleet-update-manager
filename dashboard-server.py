@@ -387,16 +387,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
         self.send_header("Connection", "keep-alive")
+        self.send_header("X-Accel-Buffering", "no")  # disable nginx buffering for SSE
         self.send_cors()
         self.end_headers()
         self._stream_state(state)
 
-    # ── GET /api/ssh/setup/stream  (SSE) ──────────────────────────────────────
+    # ── GET /api/ssh/setup/stream  (SSE) ────────────────────────────────────────
     def serve_setup_stream(self):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
         self.send_header("Connection", "keep-alive")
+        self.send_header("X-Accel-Buffering", "no")  # disable nginx buffering for SSE
         self.send_cors()
         self.end_headers()
         self._stream_state(setup_state)
