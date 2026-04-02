@@ -304,7 +304,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   #offline-notice.visible {{ display: block; }}
 </style>
 <script>
-const API = 'http://localhost:8484';
+const API = '';   // same origin – works regardless of hostname
 
 async function checkServer() {{
   try {{
