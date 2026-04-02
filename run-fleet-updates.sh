@@ -186,8 +186,8 @@ while IFS=$'\t' read -r name host desc; do
       warn "Updated $PACKAGES_UPGRADED package(s). Reboot required."
       if [[ "$REBOOT_IF_REQ" == "true" ]]; then
         warn "Scheduling reboot in ${REBOOT_DELAY}m on $name ..."
-        local reboot_user="${host%%@*}"
-        local sudo_prefix; [[ "$reboot_user" == "root" ]] && sudo_prefix="" || sudo_prefix="sudo "
+        reboot_user="${host%%@*}"
+        sudo_prefix; [[ "$reboot_user" == "root" ]] && sudo_prefix="" || sudo_prefix="sudo "
         ssh -i "$SSH_KEY" \
           -o BatchMode=yes \
           -o StrictHostKeyChecking=accept-new \
