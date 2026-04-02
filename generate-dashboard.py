@@ -154,6 +154,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fleet Status Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PGNpcmNsZSBjeD0iMTYiIGN5PSIxNiIgcj0iMTUiIGZpbGw9IiMxYTdmNjQiLz48cmVjdCB4PSI4IiB5PSI5IiB3aWR0aD0iMTYiIGhlaWdodD0iMyIgcng9IjEiIGZpbGw9IiNmZmYiLz48cmVjdCB4PSI4IiB5PSIxNCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjMiIHJ4PSIxIiBmaWxsPSIjZmZmIi8+PHJlY3QgeD0iOCIgeT0iMTkiIHdpZHRoPSIxNiIgaGVpZ2h0PSIzIiByeD0iMSIgZmlsbD0iI2ZmZiIvPjxjaXJjbGUgY3g9IjIxIiBjeT0iMTAuNSIgcj0iMSIgZmlsbD0iIzFhN2Y2NCIvPjxjaXJjbGUgY3g9IjIxIiBjeT0iMTUuNSIgcj0iMSIgZmlsbD0iIzFhN2Y2NCIvPjxjaXJjbGUgY3g9IjIxIiBjeT0iMjAuNSIgcj0iMSIgZmlsbD0iIzFhN2Y2NCIvPjwvc3ZnPg==">
 <style>
   :root {{
     --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a;

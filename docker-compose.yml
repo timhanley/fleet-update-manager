@@ -2,8 +2,8 @@ services:
   fleet-manager:
     build: .
     container_name: fleet-manager
-    ports:
-      - "8484:8484"
+    network_mode: host   # required for .local mDNS resolution via Avahi
+    # ports: not used with network_mode: host; container binds directly to host port 8484
     volumes:
       # Named Docker volume – persists fleet.conf, SSH keys, logs, and the
       # generated dashboard across container rebuilds and restarts.

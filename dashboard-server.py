@@ -348,6 +348,28 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def serve_admin(self):
         self.send_file(ADMIN_HTML_PATH)
 
+    # ── Favicon ───────────────────────────────────────────────────────────────
+    def serve_favicon(self):
+        import base64
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">'
+            '<circle cx="16" cy="16" r="15" fill="#1a7f64"/>'
+            '<rect x="8" y="9" width="16" height="3" rx="1" fill="#fff"/>'
+            '<rect x="8" y="14" width="16" height="3" rx="1" fill="#fff"/>'
+            '<rect x="8" y="19" width="16" height="3" rx="1" fill="#fff"/>'
+            '<circle cx="21" cy="10.5" r="1" fill="#1a7f64"/>'
+            '<circle cx="21" cy="15.5" r="1" fill="#1a7f64"/>'
+            '<circle cx="21" cy="20.5" r="1" fill="#1a7f64"/>'
+            '</svg>'
+        )
+        data = svg.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "image/svg+xml")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "max-age=86400")
+        self.end_headers()
+        self.wfile.write(data)
+
     # ── GET /api/status ───────────────────────────────────────────────────────
     def serve_status(self):
         _, total, running, exit_code = state.snapshot()
@@ -511,6 +533,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         routes = {
             "/":                          self.serve_dashboard,
             "/index.html":                self.serve_dashboard,
+            "/favicon.ico":               self.serve_favicon,
             "/admin":                     self.serve_admin,
             "/admin.html":                self.serve_admin,
             "/api/status":                self.serve_status,

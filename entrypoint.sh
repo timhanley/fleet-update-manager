@@ -61,5 +61,10 @@ echo "  Admin      →  http://localhost:8484/admin"
 echo "  Data dir   →  $DATA_DIR"
 echo ""
 
+# Start D-Bus and Avahi for .local mDNS resolution
+mkdir -p /run/dbus
+dbus-daemon --system --fork 2>/dev/null || true
+avahi-daemon --daemonize --no-chroot 2>/dev/null || true
+
 export FLEET_DATA_DIR="$DATA_DIR"
 exec python3 /app/dashboard-server.py "$@"

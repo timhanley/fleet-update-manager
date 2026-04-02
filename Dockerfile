@@ -10,7 +10,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         openssh-client \
         bash \
         sshpass \
-    && rm -rf /var/lib/apt/lists/*
+        avahi-daemon \
+        avahi-utils \
+        libnss-mdns \
+        dbus \
+    && rm -rf /var/lib/apt/lists/* \
+    && sed -i 's/^hosts:.*/hosts: files mdns4_minimal [NOTFOUND=return] dns/' /etc/nsswitch.conf
 
 # ── Python packages ───────────────────────────────────────────────────────────
 # croniter: powers the built-in cron scheduler
