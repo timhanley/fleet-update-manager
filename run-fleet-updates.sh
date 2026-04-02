@@ -236,9 +236,9 @@ PYEOF
 )"
   rm -f "$TMPOUT"
 
-  RESULTS_JSON="$(python3 -c "
-import json, sys
-r = json.loads('$RESULTS_JSON')
+  RESULTS_JSON="$(PREV_JSON="$RESULTS_JSON" python3 -c "
+import json, os, sys
+r = json.loads(os.environ['PREV_JSON'])
 r.append(json.loads(sys.argv[1]))
 print(json.dumps(r))
 " "$RESULT_JSON")"
@@ -249,13 +249,13 @@ done <<< "$DEVICES_JSON"
 RUN_END="$(date +%s)"
 RUN_DURATION="$((RUN_END - RUN_START))"
 
-python3 - << PYEOF
-import json
+FLEET_RESULTS="$RESULTS_JSON" python3 - << PYEOF
+import json, os
 data = {
     "run_id":           "$RUN_ID",
     "run_timestamp":    "$RUN_TIMESTAMP",
     "duration_seconds": $RUN_DURATION,
-    "devices":          json.loads("""$RESULTS_JSON"""),
+    "devices":          json.loads(os.environ["FLEET_RESULTS"]),
 }
 with open("$LOG_FILE", "w") as f:
     json.dump(data, f, indent=2)
@@ -265,9 +265,9 @@ PYEOF
 # ── Summary ───────────────────────────────────────────────────────────────────
 echo ""
 echo "──────────────────────────────────────────────────"
-python3 - << PYEOF
-import json
-devices = json.loads("""$RESULTS_JSON""")
+FLEET_RESULTS="$RESULTS_JSON" python3 - << PYEOF
+import json, os
+devices = json.loads(os.environ["FLEET_RESULTS"])
 ok      = [d for d in devices if d["status"] == "success"]
 reboot  = [d for d in devices if d["status"] == "reboot_required"]
 errors  = [d for d in devices if d["status"] == "error"]
