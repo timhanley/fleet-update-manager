@@ -208,8 +208,13 @@ while IFS=$'\t' read -r name host desc; do
   # Safely escape values for JSON
   safe_json() { printf '%s' "$1" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))"; }
 
-  RESULT_JSON="$(python3 - << PYEOF
-import json
+  # Strip stats block so only visible output lines are stored in the log
+  TMPOUT="$(mktemp)"
+  printf '%s' "$OUTPUT" | sed '/^__FLEET_STATS_BEGIN__$/,/^__FLEET_STATS_END__$/d' > "$TMPOUT"
+
+  RESULT_JSON="$(python3 - "$TMPOUT" << PYEOF
+import json, sys
+log_lines = [l for l in open(sys.argv[1]).read().splitlines() if l.strip()]
 print(json.dumps({
     "name":               $(safe_json "$name"),
     "host":               $(safe_json "$host"),
@@ -225,9 +230,11 @@ print(json.dumps({
     "disk":               $(safe_json "$DISK_VAL"),
     "duration_seconds":   $DEV_DURATION,
     "error":              $(safe_json "$ERROR_MSG") if "$STATUS" == "error" else None,
+    "output_log":         log_lines,
 }))
 PYEOF
 )"
+  rm -f "$TMPOUT"
 
   RESULTS_JSON="$(python3 -c "
 import json, sys

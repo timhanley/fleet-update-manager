@@ -120,6 +120,13 @@ def device_cards(latest, conf_devices):
         if error:
             error_detail = f'<div class="error-msg">⚠ {error[:200]}</div>'
 
+        log_detail = ""
+        output_log = dev.get("output_log", [])
+        if output_log:
+            import html as _html
+            log_text = _html.escape("\n".join(output_log))
+            log_detail = f'<details class="device-log"><summary>📋 Last update log</summary><pre class="device-log-pre">{log_text}</pre></details>'
+
         disabled_note = "" if enabled else '<span class="muted"> (disabled)</span>'
         btn_name_attr = json.dumps(name).replace('"', '&quot;')
         run_btn = f'<button class="card-run-btn" onclick="runDevice({btn_name_attr}, this)" title="Update {name} now">▶</button>'
@@ -142,7 +149,7 @@ def device_cards(latest, conf_devices):
           <div class="stat"><div class="stat-val">{dev.get('uptime','?')[:20]}</div><div class="stat-lbl">uptime</div></div>
           <div class="stat"><div class="stat-val">{dev.get('duration_seconds','?')}s</div><div class="stat-lbl">update time</div></div>
         </div>
-        {reboot_detail}{error_detail}
+        {reboot_detail}{error_detail}{log_detail}
         <div class="card-footer muted">Last run: {ts}</div>
       </div>""")
     return "\n".join(cards)
@@ -294,6 +301,26 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   #output-log .err-line  {{ color: var(--err); }}
   #output-log .warn-line {{ color: var(--warn); }}
   #output-log .dim-line  {{ color: var(--muted); }}
+
+  /* Per-device last-run log toggle */
+  .device-log {{
+    margin: 8px 0 4px; border-top: 1px solid var(--border);
+    padding-top: 6px;
+  }}
+  .device-log summary {{
+    font-size: 12px; color: var(--muted); cursor: pointer;
+    user-select: none; list-style: none; display: flex; align-items: center; gap: 6px;
+  }}
+  .device-log summary::-webkit-details-marker {{ display: none; }}
+  .device-log summary::before {{ content: '▶'; font-size: 9px; transition: transform .15s; }}
+  .device-log[open] summary::before {{ transform: rotate(90deg); }}
+  .device-log-pre {{
+    margin: 8px 0 0; padding: 10px 12px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px;
+    line-height: 1.55; color: #9ca3af; white-space: pre-wrap; word-break: break-all;
+    max-height: 260px; overflow-y: auto;
+  }}
 
   /* Server-offline notice */
   #offline-notice {{
