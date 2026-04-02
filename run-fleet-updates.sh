@@ -53,13 +53,14 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq 2>&1 | tail -3
 
 # Count upgradable packages (after update so lists are fresh)
-BEFORE=$(apt-get -qq --just-print upgrade 2>/dev/null | grep '^Inst' | wc -l)
+BEFORE=$(apt-get -qq --just-print dist-upgrade 2>/dev/null | grep '^Inst' | wc -l)
 
-# Run the upgrade
-apt-get upgrade -y \
+# Run the upgrade (dist-upgrade handles packages that require new deps or new installs,
+# such as kernel updates; it does NOT upgrade the distro release)
+apt-get dist-upgrade -y \
   -o Dpkg::Options::="--force-confdef" \
   -o Dpkg::Options::="--force-confold" \
-  2>&1 | grep -E "^(Setting up|Preparing to unpack|Reading state|Building dependency|Get:|Fetched|0 upgraded)" | tail -20
+  2>&1 | grep -E "^(Setting up|Preparing to unpack|Reading state|Building dependency|Get:|Fetched|[0-9]+ upgraded)" | tail -20
 
 # Autoremove orphaned packages
 apt-get autoremove -y -qq 2>&1 | tail -2
@@ -77,7 +78,7 @@ KERNEL=$(uname -r)
 DISK=$(df -h / 2>/dev/null | awk 'NR==2{print $3"/"$2" ("$5")"}' || echo "unknown")
 OS=$(. /etc/os-release 2>/dev/null && echo "$PRETTY_NAME" || echo "Unknown")
 ARCH=$(uname -m)
-AFTER=$(apt-get -qq --just-print upgrade 2>/dev/null | grep '^Inst' | wc -l)
+AFTER=$(apt-get -qq --just-print dist-upgrade 2>/dev/null | grep '^Inst' | wc -l)
 UPGRADED=$((BEFORE - AFTER))
 if [ "$UPGRADED" -lt 0 ]; then UPGRADED=0; fi
 
