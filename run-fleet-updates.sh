@@ -81,15 +81,22 @@ AFTER=$(apt-get -qq --just-print upgrade 2>/dev/null | grep '^Inst' | wc -l)
 UPGRADED=$((BEFORE - AFTER))
 if [ "$UPGRADED" -lt 0 ]; then UPGRADED=0; fi
 
+# Check for a new distro release (Ubuntu/Debian only; silently skipped elsewhere)
+DISTRO_UPGRADE=""
+if command -v do-release-upgrade &>/dev/null; then
+  DISTRO_UPGRADE=$(do-release-upgrade -c 2>/dev/null | grep -i "new release" | head -1 || true)
+fi
+
 printf '\n__FLEET_STATS_BEGIN__\n'
-printf 'packages_upgraded=%d\n' "$UPGRADED"
-printf 'reboot_required=%s\n'   "$REBOOT_REQ"
-printf 'reboot_packages=%s\n'   "$REBOOT_PKGS"
-printf 'uptime=%s\n'            "$UPTIME"
-printf 'kernel=%s\n'            "$KERNEL"
-printf 'disk=%s\n'              "$DISK"
-printf 'os=%s\n'                "$OS"
-printf 'arch=%s\n'              "$ARCH"
+printf 'packages_upgraded=%d\n'  "$UPGRADED"
+printf 'reboot_required=%s\n'    "$REBOOT_REQ"
+printf 'reboot_packages=%s\n'    "$REBOOT_PKGS"
+printf 'uptime=%s\n'             "$UPTIME"
+printf 'kernel=%s\n'             "$KERNEL"
+printf 'disk=%s\n'               "$DISK"
+printf 'os=%s\n'                 "$OS"
+printf 'arch=%s\n'               "$ARCH"
+printf 'distro_upgrade=%s\n'     "$DISTRO_UPGRADE"
 printf '__FLEET_STATS_END__\n'
 REMOTE_EOF
 
@@ -169,6 +176,7 @@ while IFS=$'\t' read -r name host desc; do
     DISK_VAL="$(parse_stat "$OUTPUT" "disk")"
     OS_VAL="$(parse_stat "$OUTPUT" "os")"
     ARCH_VAL="$(parse_stat "$OUTPUT" "arch")"
+    DISTRO_UPGRADE_VAL="$(parse_stat "$OUTPUT" "distro_upgrade")"
 
     PACKAGES_UPGRADED="${PACKAGES_UPGRADED:-0}"
 
@@ -230,6 +238,7 @@ print(json.dumps({
     "disk":               $(safe_json "$DISK_VAL"),
     "duration_seconds":   $DEV_DURATION,
     "error":              $(safe_json "$ERROR_MSG") if "$STATUS" == "error" else None,
+    "distro_upgrade":     $(safe_json "$DISTRO_UPGRADE_VAL"),
     "output_log":         log_lines,
 }))
 PYEOF

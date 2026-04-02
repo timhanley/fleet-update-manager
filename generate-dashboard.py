@@ -120,6 +120,12 @@ def device_cards(latest, conf_devices):
         if error:
             error_detail = f'<div class="error-msg">⚠ {error[:200]}</div>'
 
+        distro_upgrade = dev.get("distro_upgrade") or ""
+        distro_detail = ""
+        if distro_upgrade:
+            import html as _html
+            distro_detail = f'<div class="distro-upgrade-notice">⬆ {_html.escape(distro_upgrade.strip())}</div>'
+
         log_detail = ""
         output_log = dev.get("output_log", [])
         if output_log:
@@ -149,7 +155,7 @@ def device_cards(latest, conf_devices):
           <div class="stat"><div class="stat-val">{dev.get('uptime','?')[:20]}</div><div class="stat-lbl">uptime</div></div>
           <div class="stat"><div class="stat-val">{dev.get('duration_seconds','?')}s</div><div class="stat-lbl">update time</div></div>
         </div>
-        {reboot_detail}{error_detail}{log_detail}
+        {reboot_detail}{error_detail}{distro_detail}{log_detail}
         <div class="card-footer muted">Last run: {ts}</div>
       </div>""")
     return "\n".join(cards)
@@ -230,6 +236,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .card-footer {{ padding: 8px 16px 12px; font-size: 12px; color: var(--muted); }}
   .reboot-pkgs {{ padding: 6px 16px; font-size: 12px; color: var(--warn); background: rgba(245,158,11,.08); }}
   .error-msg   {{ padding: 6px 16px; font-size: 12px; color: var(--err); background: rgba(239,68,68,.08); word-break: break-word; }}
+  .distro-upgrade-notice {{ padding: 6px 16px; font-size: 12px; color: #a78bfa; background: rgba(139,92,246,.1); border-top: 1px solid rgba(139,92,246,.2); }}
   .card-body   {{ padding: 8px 16px 14px; font-size: 13px; }}
 
   /* Badge */
