@@ -139,7 +139,7 @@ def device_cards(latest, conf_devices):
         run_btn = f'<button class="card-run-btn" onclick="runDevice({btn_name_attr}, this)" title="Update {name} now">▶</button>'
 
         cards.append(f"""
-      <div class="card {badge_cls}">
+      <div class="card {badge_cls}" data-device="{json.dumps(name).replace('"', '&quot;')}">
         <div class="card-header">
           <span class="device-name">{name}{disabled_note}</span>
           <div class="card-actions">{badge_html}{run_btn}</div>
@@ -331,6 +331,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     max-height: 260px; overflow-y: auto;
   }}
 
+  /* Pending state during active run */
+  .card.pending-update {{
+    opacity: .45; transition: opacity .4s;
+  }}
+  .card.pending-update .card-stats .stat-val::after {{
+    content: '\2026'; color: var(--muted);
+  }}
+  .card.pending-update .card-stats .stat-val > * {{ display: none; }}
+  .sum-pending {{ color: var(--muted) !important; }}
+
   /* Server-offline notice */
   #offline-notice {{
     display: none; background: rgba(99,102,241,.1);
@@ -391,8 +401,7 @@ async function startRun(device, cardBtn) {{
   const label = device ? `Updating ${{device}}…` : 'Running…';
   setRunning(true, label, cardBtn);
   log.innerHTML = '';
-  panel.classList.add('visible');
-  // Use rAF so the browser lays out the panel before scrolling to it
+  panel.classList.add('visible');  startProgressPolling();  // Use rAF so the browser lays out the panel before scrolling to it
   requestAnimationFrame(() => panel.scrollIntoView({{behavior: 'smooth', block: 'start'}}));
 
   const es = new EventSource(API + '/api/run-updates/stream');
@@ -435,6 +444,74 @@ function appendLine(text, cls) {{
 function closePanel() {{
   document.getElementById('output-panel').classList.remove('visible');
 }}
+
+// ── Run-progress polling ──────────────────────────────────────────────────────
+// When a run is active, grey out summary stats and dim device cards that
+// haven't been processed yet. Clears automatically when the run finishes.
+let _pollTimer = null;
+
+function startProgressPolling() {{
+  if (_pollTimer) return;
+  _pollTimer = setInterval(pollRunProgress, 3000);
+  pollRunProgress(); // immediate first call
+}}
+
+function stopProgressPolling() {{
+  clearInterval(_pollTimer);
+  _pollTimer = null;
+  clearPendingState();
+}}
+
+async function pollRunProgress() {{
+  let status;
+  try {{
+    const r = await fetch(API + '/api/status', {{signal: AbortSignal.timeout(2000)}});
+    if (!r.ok) return;
+    status = await r.json();
+  }} catch {{ return; }}
+
+  if (!status.running) {{
+    stopProgressPolling();
+    return;
+  }}
+
+  const done = new Set((status.completed_devices || []).map(d => d.name));
+
+  // Summary stats \u2014 show \u2026 while running
+  ['sum-ok','sum-reboot','sum-err','sum-unreachable','sum-pkgs'].forEach(id => {{
+    const el = document.getElementById(id);
+    if (el) el.classList.add('sum-pending');
+  }});
+
+  // Device cards \u2014 dim ones not yet processed
+  document.querySelectorAll('.cards .card[data-device]').forEach(card => {{
+    const name = card.dataset.device;
+    if (done.has(name)) {{
+      card.classList.remove('pending-update');
+    }} else {{
+      card.classList.add('pending-update');
+    }}
+  }});
+}}
+
+function clearPendingState() {{
+  ['sum-ok','sum-reboot','sum-err','sum-unreachable','sum-pkgs'].forEach(id => {{
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('sum-pending');
+  }});
+  document.querySelectorAll('.card.pending-update').forEach(c => c.classList.remove('pending-update'));
+}}
+
+// Check on page load whether a run is already in progress
+(async () => {{
+  try {{
+    const r = await fetch(API + '/api/status', {{signal: AbortSignal.timeout(2000)}});
+    if (r.ok) {{
+      const s = await r.json();
+      if (s.running) startProgressPolling();
+    }}
+  }} catch {{}}
+}})();
 </script>
 </head>
 <body>
@@ -467,12 +544,12 @@ function closePanel() {{
   </div>
 
   <div class="summary">
-    <div class="summary-card"><div class="val">{total_devices}</div><div class="lbl">Total Devices</div></div>
-    <div class="summary-card"><div class="val ok">{ok_count}</div><div class="lbl">Up to date</div></div>
-    <div class="summary-card"><div class="val warn">{reboot_count}</div><div class="lbl">Reboot needed</div></div>
-    <div class="summary-card"><div class="val err">{error_count}</div><div class="lbl">Errors</div></div>
-    <div class="summary-card"><div class="val unreachable">{unreachable_count}</div><div class="lbl">Unreachable</div></div>
-    <div class="summary-card"><div class="val">{total_pkgs}</div><div class="lbl">Pkgs this run</div></div>
+    <div class="summary-card"><div class="val" id="sum-total">{total_devices}</div><div class="lbl">Total Devices</div></div>
+    <div class="summary-card"><div class="val ok" id="sum-ok">{ok_count}</div><div class="lbl">Up to date</div></div>
+    <div class="summary-card"><div class="val warn" id="sum-reboot">{reboot_count}</div><div class="lbl">Reboot needed</div></div>
+    <div class="summary-card"><div class="val err" id="sum-err">{error_count}</div><div class="lbl">Errors</div></div>
+    <div class="summary-card"><div class="val unreachable" id="sum-unreachable">{unreachable_count}</div><div class="lbl">Unreachable</div></div>
+    <div class="summary-card"><div class="val" id="sum-pkgs">{total_pkgs}</div><div class="lbl">Pkgs this run</div></div>
     <div class="summary-card"><div class="val val-sm">{last_run}</div><div class="lbl">Last run</div></div>
   </div>
 

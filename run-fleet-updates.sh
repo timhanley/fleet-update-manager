@@ -256,6 +256,9 @@ r.append(json.loads(sys.argv[1]))
 print(json.dumps(r))
 " "$RESULT_JSON")"
 
+  # Signal to dashboard-server that this device is done (stripped from UI output)
+  echo "__FLEET_DEVICE_DONE__:${name}:${STATUS}"
+
 done <<< "$DEVICES_JSON"
 
 # ── Write run log ─────────────────────────────────────────────────────────────

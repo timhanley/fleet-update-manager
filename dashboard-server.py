@@ -118,6 +118,7 @@ class RunState:
         self.exit_code = None
         self.started_at = None
         self.finished_at = None
+        self.completed_devices = []  # list of {"name": str, "status": str}
 
     def start(self):
         with self._lock:
@@ -126,6 +127,11 @@ class RunState:
             self.exit_code = None
             self.started_at = time.time()
             self.finished_at = None
+            self.completed_devices = []
+
+    def device_done(self, name, status):
+        with self._lock:
+            self.completed_devices.append({"name": name, "status": status})
 
     def append(self, line):
         with self._lock:
@@ -249,7 +255,12 @@ def run_updates(device=None):
 
         for line in proc.stdout:
             clean = re.sub(r'\x1b\[[0-9;]*m', '', line.rstrip())
-            state.append(clean)
+            # Intercept device-done markers — update state but don't show in UI
+            m = re.match(r'^__FLEET_DEVICE_DONE__:(.+):(.+)$', clean)
+            if m:
+                state.device_done(m.group(1), m.group(2))
+            else:
+                state.append(clean)
 
         proc.wait()
         exit_code = proc.returncode
@@ -451,12 +462,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
     # ── GET /api/status ───────────────────────────────────────────────────────
     def serve_status(self):
         _, total, running, exit_code = state.snapshot()
+        with state._lock:
+            completed = list(state.completed_devices)
         self.send_json({
             "running": running,
             "exit_code": exit_code,
             "total_lines": total,
             "started_at": state.started_at,
             "finished_at": state.finished_at,
+            "completed_devices": completed,
         })
 
     # ── GET /api/run-updates/stream  (SSE) ────────────────────────────────────
