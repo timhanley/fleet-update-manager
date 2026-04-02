@@ -50,7 +50,7 @@ set -e
 export DEBIAN_FRONTEND=noninteractive
 
 # Count upgradable packages before
-BEFORE=$(apt-get -qq --just-print upgrade 2>/dev/null | grep -c '^Inst' || echo 0)
+BEFORE=$(apt-get -qq --just-print upgrade 2>/dev/null | grep '^Inst' | wc -l)
 
 # Update package lists
 apt-get update -qq 2>&1 | tail -3
@@ -77,7 +77,7 @@ KERNEL=$(uname -r)
 DISK=$(df -h / 2>/dev/null | awk 'NR==2{print $3"/"$2" ("$5")"}' || echo "unknown")
 OS=$(. /etc/os-release 2>/dev/null && echo "$PRETTY_NAME" || echo "Unknown")
 ARCH=$(uname -m)
-AFTER=$(apt-get -qq --just-print upgrade 2>/dev/null | grep -c '^Inst' || echo 0)
+AFTER=$(apt-get -qq --just-print upgrade 2>/dev/null | grep '^Inst' | wc -l)
 UPGRADED=$((BEFORE - AFTER))
 if [ "$UPGRADED" -lt 0 ]; then UPGRADED=0; fi
 
