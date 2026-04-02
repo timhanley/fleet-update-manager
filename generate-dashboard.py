@@ -139,7 +139,7 @@ def device_cards(latest, conf_devices):
         run_btn = f'<button class="card-run-btn" onclick="runDevice({btn_name_attr}, this)" title="Update {name} now">▶</button>'
 
         cards.append(f"""
-      <div class="card {badge_cls}" data-device="{json.dumps(name).replace('"', '&quot;')}">
+      <div class="card {badge_cls}" data-device="{__import__('html').escape(name)}">
         <div class="card-header">
           <span class="device-name">{name}{disabled_note}</span>
           <div class="card-actions">{badge_html}{run_btn}</div>
