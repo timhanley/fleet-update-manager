@@ -46,6 +46,7 @@ def status_badge(status):
     badges = {
         "success":        ('<span class="badge ok">✔ OK</span>', "ok"),
         "reboot_required":('<span class="badge warn">↻ Reboot needed</span>', "warn"),
+        "rebooting":       ('<span class="badge rebooting">↻ Rebooting…</span>', "rebooting"),
         "error":          ('<span class="badge err">✖ Error</span>', "err"),
         "unreachable":    ('<span class="badge unreachable">⚡ Unreachable</span>', "unreachable"),
     }
@@ -65,7 +66,7 @@ def history_rows(runs, limit=10):
         devices = run.get("devices", [])
         total = len(devices)
         ok = sum(1 for d in devices if d["status"] == "success")
-        reboot = sum(1 for d in devices if d["status"] == "reboot_required")
+        reboot = sum(1 for d in devices if d["status"] in ("reboot_required", "rebooting"))
         errors = sum(1 for d in devices if d["status"] in ("error", "unreachable"))
         pkgs = sum(d.get("packages_upgraded", 0) for d in devices)
         dur = run.get("duration_seconds", 0)
@@ -243,6 +244,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .badge {{ font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }}
   .badge.ok          {{ background: rgba(34,197,94,.15);   color: var(--ok); }}
   .badge.warn        {{ background: rgba(245,158,11,.15);  color: var(--warn); }}
+  .badge.rebooting   {{ background: rgba(99,102,241,.15);  color: #a5b4fc; }}
   .badge.err         {{ background: rgba(239,68,68,.15);   color: var(--err); }}
   .badge.unreachable {{ background: rgba(100,116,139,.15); color: var(--unreachable); }}
   .badge.pending-badge {{ background: rgba(107,114,128,.15); color: var(--muted); }}
@@ -523,7 +525,7 @@ def generate():
     statuses = [d.get("status") for d in latest.values()]
     total_devices = max(len(conf_devices), len(latest))
     ok_count          = statuses.count("success")
-    reboot_count      = statuses.count("reboot_required")
+    reboot_count      = statuses.count("reboot_required") + statuses.count("rebooting")
     error_count       = statuses.count("error")
     unreachable_count = statuses.count("unreachable")
     never_run         = total_devices - len(latest)

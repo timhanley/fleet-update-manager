@@ -188,13 +188,16 @@ while IFS=$'\t' read -r name host desc; do
         warn "Scheduling reboot in ${REBOOT_DELAY}m on $name ..."
         reboot_user="${host%%@*}"
         [[ "$reboot_user" == "root" ]] && sudo_prefix="" || sudo_prefix="sudo "
-        ssh -i "$SSH_KEY" \
+        if ssh -i "$SSH_KEY" \
           -o BatchMode=yes \
           -o StrictHostKeyChecking=accept-new \
           -o UserKnownHostsFile="$DATA_DIR/.ssh/known_hosts" \
           "$host" \
-          "${sudo_prefix}shutdown -r +${REBOOT_DELAY} 'Scheduled reboot after automatic updates'" 2>&1 || \
+          "${sudo_prefix}shutdown -r +${REBOOT_DELAY} 'Scheduled reboot after automatic updates'" 2>&1; then
+          STATUS="rebooting"
+        else
           warn "Could not schedule reboot on $name (non-fatal)"
+        fi
       fi
     else
       info "Updated $PACKAGES_UPGRADED package(s). No reboot needed."
