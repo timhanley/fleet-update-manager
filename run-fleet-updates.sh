@@ -49,11 +49,11 @@ read -r -d '' REMOTE_SCRIPT << 'REMOTE_EOF' || true
 set -e
 export DEBIAN_FRONTEND=noninteractive
 
-# Count upgradable packages before
-BEFORE=$(apt-get -qq --just-print upgrade 2>/dev/null | grep '^Inst' | wc -l)
-
 # Update package lists
 apt-get update -qq 2>&1 | tail -3
+
+# Count upgradable packages (after update so lists are fresh)
+BEFORE=$(apt-get -qq --just-print upgrade 2>/dev/null | grep '^Inst' | wc -l)
 
 # Run the upgrade
 apt-get upgrade -y \
