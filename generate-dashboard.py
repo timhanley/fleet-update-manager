@@ -203,7 +203,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .val.warn        {{ color: var(--warn); }}
   .val.err         {{ color: var(--err); }}
   .val.unreachable {{ color: var(--unreachable); }}
-  .summary-card .val.val-sm {{ font-size: 12px; font-weight: 600; line-height: 1.5; padding-top: 8px; }}
+  .summary-card .val.val-sm {{ font-size: 15px; font-weight: 600; line-height: 1.5; padding-top: 4px; }}
 
   /* Device cards */
   .section-title {{ font-size: 16px; font-weight: 600; margin-bottom: 14px; color: var(--text2); text-transform: uppercase; letter-spacing: .05em; }}
@@ -230,9 +230,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .card-meta {{ padding: 0 16px 8px; color: var(--text2); font-size: 12px; display: flex; gap: 6px; flex-wrap: wrap; }}
   .sep {{ color: var(--border); }}
   .card-stats {{ display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); margin: 8px 0; }}
-  .stat {{ background: var(--surface2); padding: 10px 12px; }}
-  .stat-val {{ font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }}
-  .stat-lbl {{ color: var(--text2); font-size: 11px; margin-top: 2px; }}
+  .stat {{ background: var(--surface2); padding: 10px 12px; min-width: 0; }}
+  .stat-val {{ font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+  .stat-lbl {{ color: var(--text2); font-size: 11px; margin-top: 2px; white-space: nowrap; }}
   .card-footer {{ padding: 8px 16px 12px; font-size: 12px; color: var(--muted); }}
   .reboot-pkgs {{ padding: 6px 16px; font-size: 12px; color: var(--warn); background: rgba(245,158,11,.08); }}
   .error-msg   {{ padding: 6px 16px; font-size: 12px; color: var(--err); background: rgba(239,68,68,.08); word-break: break-word; }}
