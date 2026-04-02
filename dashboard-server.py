@@ -559,6 +559,16 @@ if __name__ == "__main__":
     print(f"  Scheduler:   {'croniter available' if HAVE_CRONITER else 'croniter not installed (pip3 install croniter)'}")
     print(f"\n  Press Ctrl+C to stop\n")
 
+    # Regenerate dashboard on startup so stale HTML from old builds is replaced
+    try:
+        subprocess.run(
+            ["python3", str(SCRIPT_DIR / "generate-dashboard.py")],
+            capture_output=True, text=True,
+            env={**os.environ, "FLEET_DATA_DIR": str(DATA_DIR)},
+        )
+    except Exception as e:
+        print(f"  Warning: could not regenerate dashboard on startup: {e}")
+
     # Start scheduler background thread
     threading.Thread(target=schedule_thread, daemon=True).start()
 
