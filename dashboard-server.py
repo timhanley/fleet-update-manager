@@ -151,6 +151,80 @@ state       = RunState()   # fleet update runs
 setup_state = RunState()   # SSH setup runs
 
 
+# ── Background: post-reboot watcher ──────────────────────────────────────────
+def watch_rebooting_devices():
+    """
+    After a run, find the latest log file and for each device with status
+    'rebooting', poll SSH until the device responds (or we time out).
+    On success update the log entry to 'success' and regenerate the dashboard.
+    """
+    POLL_INTERVAL  = 30    # seconds between SSH probes
+    POLL_TIMEOUT   = 600   # give up after 10 minutes
+    INITIAL_WAIT   = 90    # wait before first probe (let the device actually go down)
+
+    # Find the most recent log file
+    logs = sorted(LOG_DIR.glob("run-*.json"), reverse=True)
+    if not logs:
+        return
+    log_path = logs[0]
+
+    try:
+        run_data = json.loads(log_path.read_text())
+    except Exception:
+        return
+
+    rebooting = [d for d in run_data.get("devices", []) if d.get("status") == "rebooting"]
+    if not rebooting:
+        return
+
+    conf     = load_fleet_conf()
+    settings = conf.get("settings", {})
+    key_path = DATA_DIR / settings.get("ssh_key_path", ".ssh/fleet_key")
+    known    = DATA_DIR / ".ssh/known_hosts"
+
+    time.sleep(INITIAL_WAIT)
+
+    for dev in rebooting:
+        host = dev.get("host", "")
+        name = dev.get("name", host)
+
+        deadline = time.time() + POLL_TIMEOUT
+        came_back = False
+        while time.time() < deadline:
+            result = subprocess.run(
+                [
+                    "ssh",
+                    "-i", str(key_path),
+                    "-o", "BatchMode=yes",
+                    "-o", "StrictHostKeyChecking=accept-new",
+                    "-o", "ConnectTimeout=10",
+                    "-o", f"UserKnownHostsFile={known}",
+                    host,
+                    "echo ok",
+                ],
+                capture_output=True, text=True,
+            )
+            if result.returncode == 0:
+                came_back = True
+                break
+            time.sleep(POLL_INTERVAL)
+
+        if came_back:
+            # Update the device entry in the log to success
+            for d in run_data["devices"]:
+                if d.get("name") == name:
+                    d["status"] = "success"
+                    break
+            log_path.write_text(json.dumps(run_data, indent=2))
+
+            # Regenerate dashboard
+            env = {**os.environ, "FLEET_DATA_DIR": str(DATA_DIR)}
+            subprocess.run(
+                ["python3", str(SCRIPT_DIR / "generate-dashboard.py")],
+                capture_output=True, text=True, env=env,
+            )
+
+
 # ── Background: fleet update runner ──────────────────────────────────────────
 def run_updates(device=None):
     update_script   = SCRIPT_DIR / "run-fleet-updates.sh"
@@ -190,6 +264,10 @@ def run_updates(device=None):
             state.append(result.stdout.strip() or "Dashboard updated.")
             if result.stderr:
                 state.append("Warning: " + result.stderr.strip())
+            # Start background watchers for any devices that are rebooting
+            threading.Thread(
+                target=watch_rebooting_devices, daemon=True
+            ).start()
         else:
             state.append(f"=== Update script exited with code {exit_code} ===")
 
