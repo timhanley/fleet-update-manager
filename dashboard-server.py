@@ -173,6 +173,16 @@ def _save_stream_log():
         print(f"Warning: could not save stream_log: {exc}")
 
 
+def _cleanup_old_logs(keep=10):
+    """Delete run log files older than the most recent `keep` runs."""
+    logs = sorted(LOG_DIR.glob("run-*.json"), reverse=True)
+    for old in logs[keep:]:
+        try:
+            old.unlink()
+        except Exception as exc:
+            print(f"Warning: could not delete old log {old.name}: {exc}")
+
+
 # ── Background: post-reboot watcher ──────────────────────────────────────────
 def watch_rebooting_devices():
     """
@@ -293,6 +303,8 @@ def run_updates(device=None):
                 state.append("Warning: " + result.stderr.strip())
             # Save stream log into the latest run JSON
             _save_stream_log()
+            # Remove log files beyond the last 10 runs
+            _cleanup_old_logs(keep=10)
             # Start background watchers for any devices that are rebooting
             threading.Thread(
                 target=watch_rebooting_devices, daemon=True
@@ -509,7 +521,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         try:
             data = json.loads(log_file.read_text())
-            self.send_json({"stream_log": data.get("stream_log", [])})
+            self.send_json(data)
         except Exception:
             self.send_response(500)
             self.end_headers()

@@ -555,8 +555,45 @@ async function showRunLog(row) {{
     const r = await fetch(API + '/api/run-log/' + runId, {{signal: AbortSignal.timeout(5000)}});
     if (!r.ok) {{ pre.textContent = 'Log not available (HTTP ' + r.status + ').'; return; }}
     const data = await r.json();
-    const lines = data.stream_log || [];
-    pre.textContent = lines.length ? lines.join('\\n') : '(No stream log recorded for this run.)';
+    // Build a readable text representation of the full log file
+    const lines = [];
+    lines.push('=== Fleet Update Run ===');
+    lines.push('Timestamp : ' + (data.run_timestamp || '—'));
+    lines.push('Duration  : ' + (data.duration_seconds != null ? data.duration_seconds + 's' : '—'));
+    lines.push('Run ID    : ' + (data.run_id || runId));
+    lines.push('');
+    // Per-device details
+    const devices = data.devices || [];
+    if (devices.length) {{
+      lines.push('=== Devices ===');
+      for (const d of devices) {{
+        lines.push('');
+        lines.push('  ' + d.name + ' (' + (d.host || '—') + ')');
+        if (d.description) lines.push('  Description : ' + d.description);
+        lines.push('  Status      : ' + (d.status || '—'));
+        lines.push('  Packages    : ' + (d.packages_upgraded != null ? d.packages_upgraded : '—'));
+        if (d.os)       lines.push('  OS          : ' + d.os);
+        if (d.kernel)   lines.push('  Kernel      : ' + d.kernel);
+        if (d.disk)     lines.push('  Disk        : ' + d.disk);
+        if (d.uptime)   lines.push('  Uptime      : ' + d.uptime);
+        if (d.duration_seconds != null) lines.push('  Duration    : ' + d.duration_seconds + 's');
+        if (d.reboot_packages && d.reboot_packages.length)
+          lines.push('  Reboot pkgs : ' + d.reboot_packages.join(', '));
+        if (d.distro_upgrade) lines.push('  Dist-upgrade: ' + d.distro_upgrade);
+        if (d.error)    lines.push('  Error       : ' + d.error);
+      }}
+      lines.push('');
+    }}
+    // Stream log (raw terminal output)
+    const streamLines = data.stream_log || [];
+    if (streamLines.length) {{
+      lines.push('=== Terminal Output ===');
+      lines.push('');
+      lines.push(...streamLines);
+    }} else {{
+      lines.push('(No terminal output recorded for this run.)');
+    }}
+    pre.textContent = lines.join('\\n');
   }} catch(e) {{
     pre.textContent = 'Failed to load log: ' + e.message;
   }}
