@@ -55,15 +55,21 @@ apt-get update -qq 2>&1 | tail -3
 # Count upgradable packages (after update so lists are fresh)
 BEFORE=$(apt-get -qq --just-print dist-upgrade 2>/dev/null | grep '^Inst' | wc -l)
 
+# Capture the upgrade plan (shows packages + dependency context) before running
+UPGRADE_PLAN=$(apt-get -s dist-upgrade 2>/dev/null \
+  | grep -E "^(Inst|Remv)" \
+  | sed 's/^Inst /  [install/upgrade] /; s/^Remv /  [remove]           /' \
+  || true)
+
 # Run the upgrade (dist-upgrade handles packages that require new deps or new installs,
 # such as kernel updates; it does NOT upgrade the distro release)
 apt-get dist-upgrade -y \
   -o Dpkg::Options::="--force-confdef" \
   -o Dpkg::Options::="--force-confold" \
-  2>&1 | grep -E "^(Setting up|Preparing to unpack|Reading state|Building dependency|Get:|Fetched|[0-9]+ upgraded)" | tail -20
+  2>&1 | grep -E "^(Setting up|Preparing to unpack|Unpacking|Removing|Reading state|Building dependency|Get:|Fetched|[0-9]+ upgraded)"
 
 # Autoremove orphaned packages
-apt-get autoremove -y -qq 2>&1 | tail -2
+AUTOREMOVE_OUT=$(apt-get autoremove -y -qq 2>&1 | grep -v "^$" || true)
 
 # Collect stats
 REBOOT_REQ="false"
@@ -98,6 +104,12 @@ printf 'disk=%s\n'               "$DISK"
 printf 'os=%s\n'                 "$OS"
 printf 'arch=%s\n'               "$ARCH"
 printf 'distro_upgrade=%s\n'     "$DISTRO_UPGRADE"
+printf '__UPGRADE_PLAN_BEGIN__\n'
+printf '%s\n'                    "$UPGRADE_PLAN"
+printf '__UPGRADE_PLAN_END__\n'
+printf '__AUTOREMOVE_BEGIN__\n'
+printf '%s\n'                    "$AUTOREMOVE_OUT"
+printf '__AUTOREMOVE_END__\n'
 printf '__FLEET_STATS_END__\n'
 REMOTE_EOF
 
@@ -166,6 +178,7 @@ while IFS=$'\t' read -r name host desc; do
   DISK_VAL=""
   OS_VAL=""
   ARCH_VAL=""
+  DISTRO_UPGRADE_VAL=""
   OUTPUT=""
 
   if OUTPUT="$(ssh_run "$host" 2>&1)"; then
@@ -220,13 +233,40 @@ while IFS=$'\t' read -r name host desc; do
   # Safely escape values for JSON
   safe_json() { printf '%s' "$1" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))"; }
 
-  # Strip stats block so only visible output lines are stored in the log
-  TMPOUT="$(mktemp)"
-  printf '%s' "$OUTPUT" | sed '/^__FLEET_STATS_BEGIN__$/,/^__FLEET_STATS_END__$/d' > "$TMPOUT"
-
-  RESULT_JSON="$(python3 - "$TMPOUT" << PYEOF
+  # Build device JSON — pass full SSH output to Python for parsing
+  RESULT_JSON="$(printf '%s' "$OUTPUT" | python3 - << PYEOF
 import json, sys
-log_lines = [l for l in open(sys.argv[1]).read().splitlines() if l.strip()]
+
+raw = sys.stdin.read()
+lines = raw.splitlines()
+
+# Extract the visible apt output (before stats block)
+output_log = []
+in_stats = False
+for l in lines:
+    if l == '__FLEET_STATS_BEGIN__':
+        in_stats = True
+    elif l == '__FLEET_STATS_END__':
+        in_stats = False
+    elif not in_stats and l.strip():
+        output_log.append(l)
+
+# Extract a named sub-block from within the stats section
+def extract_block(start_marker, end_marker):
+    capturing = False
+    result = []
+    for l in lines:
+        if l == start_marker:
+            capturing = True
+        elif l == end_marker:
+            break
+        elif capturing and l.strip():
+            result.append(l)
+    return result
+
+upgrade_plan  = extract_block('__UPGRADE_PLAN_BEGIN__', '__UPGRADE_PLAN_END__')
+autoremove    = extract_block('__AUTOREMOVE_BEGIN__',   '__AUTOREMOVE_END__')
+
 print(json.dumps({
     "name":               $(safe_json "$name"),
     "host":               $(safe_json "$host"),
@@ -243,11 +283,12 @@ print(json.dumps({
     "duration_seconds":   $DEV_DURATION,
     "error":              $(safe_json "$ERROR_MSG") if "$STATUS" == "error" else None,
     "distro_upgrade":     $(safe_json "$DISTRO_UPGRADE_VAL"),
-    "output_log":         log_lines,
+    "upgrade_plan":       upgrade_plan,
+    "autoremove_log":     autoremove,
+    "output_log":         output_log,
 }))
 PYEOF
 )"
-  rm -f "$TMPOUT"
 
   RESULTS_JSON="$(PREV_JSON="$RESULTS_JSON" python3 -c "
 import json, os, sys

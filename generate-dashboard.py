@@ -581,6 +581,23 @@ async function showRunLog(row) {{
           lines.push('  Reboot pkgs : ' + d.reboot_packages.join(', '));
         if (d.distro_upgrade) lines.push('  Dist-upgrade: ' + d.distro_upgrade);
         if (d.error)    lines.push('  Error       : ' + d.error);
+        if (d.upgrade_plan && d.upgrade_plan.length) {{
+          lines.push('  ---');
+          lines.push('  Upgrade plan (from apt dry-run):');
+          for (const ol of d.upgrade_plan) lines.push('  ' + ol);
+        }} else if (d.packages_upgraded === 0) {{
+          lines.push('  (No packages to upgrade)');
+        }}
+        if (d.autoremove_log && d.autoremove_log.length) {{
+          lines.push('  ---');
+          lines.push('  Autoremove:');
+          for (const ol of d.autoremove_log) lines.push('  ' + ol);
+        }}
+        if (d.output_log && d.output_log.length) {{
+          lines.push('  ---');
+          lines.push('  Apt output:');
+          for (const ol of d.output_log) lines.push('  ' + ol);
+        }}
       }}
       lines.push('');
     }}
