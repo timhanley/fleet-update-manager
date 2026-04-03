@@ -352,11 +352,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   /* Run log modal */
   #run-log-modal {{
     display: none; position: fixed; inset: 0; z-index: 999;
-    background: rgba(0,0,0,.7); align-items: center; justify-content: center;
+    background: rgba(0,0,0,.55); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
   }}
   #run-log-modal.visible {{ display: flex; }}
   #run-log-box {{
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    background: rgb(30,32,40); border: 1px solid var(--border); border-radius: 12px;
     width: min(860px, 96vw); max-height: 80vh; display: flex; flex-direction: column;
     box-shadow: 0 24px 64px rgba(0,0,0,.6);
   }}
