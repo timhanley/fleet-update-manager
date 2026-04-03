@@ -232,7 +232,11 @@ Each device card also shows:
 
 ### Per-device update button
 
-Each device card has a **▶** button that triggers an update for that device only, with live output streamed directly into the dashboard.
+Each device card has a **▶** button that triggers an update for that device only, with live output streamed directly into the dashboard. While a single-device run is active, only that device's card is dimmed to show it is pending — all other device cards remain unchanged.
+
+### Update history log
+
+The history table at the bottom of the dashboard shows the last 10 runs. Click any row to open a modal showing the full live-stream output that was captured during that run. This lets you review exactly what happened on any past run without digging into the raw JSON log files.
 
 ---
 
@@ -269,6 +273,7 @@ The dashboard server exposes a simple REST API used by both the dashboard and ad
 | `GET` | `/api/ssh/setup/stream` | SSE stream of live setup output |
 | `GET` | `/api/schedule` | Return schedule config + next run time |
 | `POST` | `/api/schedule` | Save schedule config |
+| `GET` | `/api/run-log/{run_id}` | Return the captured stream log for a past run (e.g. `run-20260401-020000`) |
 
 ---
 
