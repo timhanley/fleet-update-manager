@@ -119,8 +119,9 @@ class RunState:
         self.started_at = None
         self.finished_at = None
         self.completed_devices = []  # list of {"name": str, "status": str}
+        self.target_device = None    # None = full fleet run
 
-    def start(self):
+    def start(self, target_device=None):
         with self._lock:
             self.running = True
             self.output_lines = []
@@ -128,6 +129,7 @@ class RunState:
             self.started_at = time.time()
             self.finished_at = None
             self.completed_devices = []
+            self.target_device = target_device
 
     def device_done(self, name, status):
         with self._lock:
@@ -155,6 +157,20 @@ class RunState:
 
 state       = RunState()   # fleet update runs
 setup_state = RunState()   # SSH setup runs
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+def _save_stream_log():
+    """Append the stream_log (all SSE lines from the run) to the latest run JSON."""
+    logs = sorted(LOG_DIR.glob("run-*.json"), reverse=True)
+    if not logs:
+        return
+    try:
+        run_data = json.loads(logs[0].read_text())
+        run_data["stream_log"] = [item["line"] for item in state.output_lines]
+        logs[0].write_text(json.dumps(run_data, indent=2))
+    except Exception as exc:
+        print(f"Warning: could not save stream_log: {exc}")
 
 
 # ── Background: post-reboot watcher ──────────────────────────────────────────
@@ -236,7 +252,7 @@ def run_updates(device=None):
     update_script   = SCRIPT_DIR / "run-fleet-updates.sh"
     dashboard_script = SCRIPT_DIR / "generate-dashboard.py"
 
-    state.start()
+    state.start(target_device=device)
     label = f"=== Updating {device} ===" if device else "=== Fleet update started ==="
     state.append(label)
 
@@ -275,6 +291,8 @@ def run_updates(device=None):
             state.append(result.stdout.strip() or "Dashboard updated.")
             if result.stderr:
                 state.append("Warning: " + result.stderr.strip())
+            # Save stream log into the latest run JSON
+            _save_stream_log()
             # Start background watchers for any devices that are rebooting
             threading.Thread(
                 target=watch_rebooting_devices, daemon=True
@@ -464,6 +482,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         _, total, running, exit_code = state.snapshot()
         with state._lock:
             completed = list(state.completed_devices)
+            target = state.target_device
         self.send_json({
             "running": running,
             "exit_code": exit_code,
@@ -471,7 +490,29 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "started_at": state.started_at,
             "finished_at": state.finished_at,
             "completed_devices": completed,
+            "target_device": target,
         })
+
+    # ── GET /api/run-log/<run_id> ─────────────────────────────────────────────
+    def serve_run_log(self, run_id):
+        # run_id is the bare filename stem, e.g. "run-20260401-143531"
+        # Sanitise to prevent path traversal
+        run_id = run_id.strip("/")
+        if not run_id.startswith("run-") or "/" in run_id or ".." in run_id:
+            self.send_response(400)
+            self.end_headers()
+            return
+        log_file = LOG_DIR / f"{run_id}.json"
+        if not log_file.exists():
+            self.send_response(404)
+            self.end_headers()
+            return
+        try:
+            data = json.loads(log_file.read_text())
+            self.send_json({"stream_log": data.get("stream_log", [])})
+        except Exception:
+            self.send_response(500)
+            self.end_headers()
 
     # ── GET /api/run-updates/stream  (SSE) ────────────────────────────────────
     def serve_stream(self):
@@ -640,6 +681,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         handler = routes.get(path)
         if handler:
             handler()
+        elif path.startswith("/api/run-log/"):
+            self.serve_run_log(path[len("/api/run-log/"):])
         else:
             self.send_response(404)
             self.end_headers()

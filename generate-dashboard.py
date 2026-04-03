@@ -5,6 +5,7 @@ Reads all JSON run logs and produces fleet-status.html.
 Called automatically by the scheduled task after each update run.
 """
 
+import html
 import json
 import os
 import sys
@@ -70,10 +71,13 @@ def history_rows(runs, limit=10):
         errors = sum(1 for d in devices if d["status"] in ("error", "unreachable"))
         pkgs = sum(d.get("packages_upgraded", 0) for d in devices)
         dur = run.get("duration_seconds", 0)
+        run_id = html.escape("run-" + run.get("run_id", "")) if run.get("run_id") else ""
 
         row_class = "err-row" if errors else ("warn-row" if reboot else "")
+        has_log = "history-row" if run_id else ""
+        title = ' title="Click to view run log"' if run_id else ""
         rows.append(f"""
-        <tr class="{row_class}">
+        <tr class="{row_class} {has_log}" data-run-id="{run_id}" onclick="showRunLog(this)"{title}>
           <td>{ts}</td>
           <td>{total}</td>
           <td class="ok-txt">{ok}</td>
@@ -341,6 +345,38 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .card.pending-update .card-stats .stat-val > * {{ display: none; }}
   .sum-pending {{ color: var(--muted) !important; }}
 
+  /* History rows — clickable */
+  .history-row {{ cursor: pointer; }}
+  .history-row:hover {{ background: rgba(99,102,241,.08) !important; }}
+
+  /* Run log modal */
+  #run-log-modal {{
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: rgba(0,0,0,.7); align-items: center; justify-content: center;
+  }}
+  #run-log-modal.visible {{ display: flex; }}
+  #run-log-box {{
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    width: min(860px, 96vw); max-height: 80vh; display: flex; flex-direction: column;
+    box-shadow: 0 24px 64px rgba(0,0,0,.6);
+  }}
+  #run-log-header {{
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+  }}
+  #run-log-title {{ font-weight: 600; font-size: 14px; }}
+  #run-log-close {{
+    background: none; border: none; color: var(--muted); cursor: pointer;
+    font-size: 20px; line-height: 1; padding: 0 4px;
+  }}
+  #run-log-close:hover {{ color: var(--text); }}
+  #run-log-pre {{
+    flex: 1; overflow-y: auto; padding: 14px 18px;
+    font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px;
+    line-height: 1.6; color: #9ca3af; white-space: pre-wrap; word-break: break-all;
+    margin: 0;
+  }}
+
   /* Server-offline notice */
   #offline-notice {{
     display: none; background: rgba(99,102,241,.1);
@@ -476,6 +512,7 @@ async function pollRunProgress() {{
   }}
 
   const done = new Set((status.completed_devices || []).map(d => d.name));
+  const target = status.target_device || null;
 
   // Summary stats \u2014 show \u2026 while running
   ['sum-ok','sum-reboot','sum-err','sum-unreachable','sum-pkgs'].forEach(id => {{
@@ -483,9 +520,10 @@ async function pollRunProgress() {{
     if (el) el.classList.add('sum-pending');
   }});
 
-  // Device cards \u2014 dim ones not yet processed
+  // Device cards \u2014 dim only the target device (single-device run) or all not-yet-done (fleet run)
   document.querySelectorAll('.cards .card[data-device]').forEach(card => {{
     const name = card.dataset.device;
+    if (target !== null && name !== target) return; // leave other cards alone
     if (done.has(name)) {{
       card.classList.remove('pending-update');
     }} else {{
@@ -502,6 +540,43 @@ function clearPendingState() {{
   document.querySelectorAll('.card.pending-update').forEach(c => c.classList.remove('pending-update'));
 }}
 
+// ── Run log modal ─────────────────────────────────────────────────────────────
+async function showRunLog(row) {{
+  const runId = row.dataset.runId;
+  if (!runId) return;
+  const modal = document.getElementById('run-log-modal');
+  const pre   = document.getElementById('run-log-pre');
+  const title = document.getElementById('run-log-title');
+  title.textContent = 'Run log: ' + runId;
+  pre.textContent = 'Loading\u2026';
+  modal.classList.add('visible');
+  try {{
+    const r = await fetch(API + '/api/run-log/' + runId, {{signal: AbortSignal.timeout(5000)}});
+    if (!r.ok) {{ pre.textContent = 'Log not available (HTTP ' + r.status + ').'; return; }}
+    const data = await r.json();
+    const lines = data.stream_log || [];
+    pre.textContent = lines.length ? lines.join('\n') : '(No stream log recorded for this run.)';
+  }} catch(e) {{
+    pre.textContent = 'Failed to load log: ' + e.message;
+  }}
+}}
+
+function closeRunLog() {{
+  document.getElementById('run-log-modal').classList.remove('visible');
+}}
+
+// Close modal on backdrop click
+document.addEventListener('click', e => {{
+  const modal = document.getElementById('run-log-modal');
+  if (e.target === modal) closeRunLog();
+}});
+
+// Close on Escape
+document.addEventListener('keydown', e => {{
+  if (e.key === 'Escape') closeRunLog();
+}});
+
+// ── Startup: check if run is already in progress ──────────────────────────────
 // Check on page load whether a run is already in progress
 (async () => {{
   try {{
@@ -515,6 +590,18 @@ function clearPendingState() {{
 </script>
 </head>
 <body>
+
+<!-- Run log modal -->
+<div id="run-log-modal" role="dialog" aria-modal="true">
+  <div id="run-log-box">
+    <div id="run-log-header">
+      <span id="run-log-title">Run log</span>
+      <button id="run-log-close" onclick="closeRunLog()" title="Close">&times;</button>
+    </div>
+    <pre id="run-log-pre"></pre>
+  </div>
+</div>
+
 <header>
   <div>
     <h1>🖥️ Fleet Status Dashboard</h1>
