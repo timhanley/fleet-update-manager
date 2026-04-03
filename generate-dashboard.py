@@ -555,7 +555,7 @@ async function showRunLog(row) {{
     if (!r.ok) {{ pre.textContent = 'Log not available (HTTP ' + r.status + ').'; return; }}
     const data = await r.json();
     const lines = data.stream_log || [];
-    pre.textContent = lines.length ? lines.join('\n') : '(No stream log recorded for this run.)';
+    pre.textContent = lines.length ? lines.join('\\n') : '(No stream log recorded for this run.)';
   }} catch(e) {{
     pre.textContent = 'Failed to load log: ' + e.message;
   }}
