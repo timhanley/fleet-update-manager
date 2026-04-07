@@ -1,6 +1,6 @@
 # Fleet Update Manager
 
-A self-hosted tool that keeps your Raspberry Pis, Ubuntu VMs, and Proxmox nodes up to date — automatically, over SSH, from a central machine (or Docker container). A web dashboard shows each device's status, and an admin UI lets you manage your fleet without touching config files.
+A self-hosted tool that keeps your Raspberry Pis, Ubuntu/Debian machines, and Proxmox nodes up to date — automatically, over SSH, from a central machine (or Docker container). A web dashboard shows each device's status, and an admin UI lets you manage your fleet without touching config files.
 
 ---
 
@@ -14,8 +14,8 @@ A central machine (or Docker container) SSH-es into each device in your fleet an
 │                                                   │
 │  dashboard-server.py  ←→  browser :8484          │
 │      │                                            │
-│      ├── run-fleet-updates.sh  ──SSH──► pi@proxy  │
-│      │        │                   └──► root@pve1  │
+│      ├── run-fleet-updates.sh  ──SSH──► user@pi1  │
+│      │        │                   └──► root@node1 │
 │      │        └── logs/run-*.json                 │
 │      │                                            │
 │      └── generate-dashboard.py                   │
@@ -115,8 +115,6 @@ pip3 install croniter
 | `Dockerfile` | Container image definition |
 | `docker-compose.yml` | Compose service: port, volume, restart policy |
 | `entrypoint.sh` | Docker startup: initialises `/data`, generates SSH key, starts server |
-| `setup-auto-updates.sh` | *(optional)* Installs `unattended-upgrades` on each device for daily local auto-updates |
-| `README-auto-updates.md` | Documentation for the `unattended-upgrades` approach |
 
 ### Data directory layout
 

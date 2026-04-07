@@ -1,9 +1,9 @@
 # ── Fleet Manager – Dockerfile ───────────────────────────────────────────────
-# Keeps your Raspberry Pis and Ubuntu VMs up to date.
+# Keeps your Raspberry Pis and Ubuntu/Debian machines up to date.
 # Data (fleet.conf, SSH keys, logs) is stored in the /data volume.
 FROM python:3.11-slim
 
-LABEL description="Fleet Update Manager – auto-updates Raspberry Pis and Ubuntu VMs via SSH"
+LABEL description="Fleet Update Manager – auto-updates Raspberry Pis and Ubuntu/Debian machines via SSH"
 
 # ── System packages ───────────────────────────────────────────────────────────
 RUN apt-get update && apt-get install -y --no-install-recommends \
