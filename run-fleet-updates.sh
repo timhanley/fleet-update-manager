@@ -58,7 +58,7 @@ BEFORE=$(apt-get -qq --just-print dist-upgrade 2>/dev/null | grep '^Inst' | wc -
 # Capture the upgrade plan (shows packages + dependency context) before running
 UPGRADE_PLAN=$(apt-get -s dist-upgrade 2>/dev/null \
   | grep -E "^(Inst|Remv)" \
-  | sed 's/^Inst /  [install/upgrade] /; s/^Remv /  [remove]           /' \
+  | sed 's|^Inst |  [install/upgrade] |; s|^Remv |  [remove]           |' \
   || true)
 
 # Run the upgrade (dist-upgrade handles packages that require new deps or new installs,
@@ -234,10 +234,10 @@ while IFS=$'\t' read -r name host desc; do
   safe_json() { printf '%s' "$1" | python3 -c "import sys,json; print(json.dumps(sys.stdin.read()))"; }
 
   # Build device JSON — pass full SSH output to Python for parsing
-  RESULT_JSON="$(printf '%s' "$OUTPUT" | python3 - << PYEOF
-import json, sys
+  RESULT_JSON="$(FLEET_SSH_OUT="$OUTPUT" python3 << PYEOF
+import json, sys, os
 
-raw = sys.stdin.read()
+raw = os.environ.get('FLEET_SSH_OUT', '')
 lines = raw.splitlines()
 
 # Extract the visible apt output (before stats block)
