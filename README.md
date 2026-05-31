@@ -353,8 +353,17 @@ In Docker it is installed automatically. Verify the server log at startup — it
 
 ### Container can't reach devices by hostname
 
-The container uses `network_mode: host` and runs `avahi-daemon` internally, which enables `.local` mDNS resolution on Linux hosts. If devices are still unreachable:
-- Confirm the host machine can resolve the name: `ping device.local`
+The container uses `network_mode: host` and relies on the **host machine's** `avahi-daemon` for `.local` mDNS resolution. The host's D-Bus socket is mounted into the container (`/run/dbus/system_bus_socket`) so `libnss-mdns` inside the container can query the host's Avahi daemon directly.
+
+Requirements on the Docker host:
+```bash
+sudo apt install avahi-daemon libnss-mdns
+sudo systemctl enable --now avahi-daemon
+```
+
+If devices are still unreachable:
+- Confirm the host can resolve the name: `ping device.local`
+- Confirm `avahi-daemon` is running on the host: `systemctl status avahi-daemon`
 - On non-Linux hosts (Mac/Windows Docker Desktop), `network_mode: host` is not supported — use static IP addresses in `fleet.conf` instead
 
 ---

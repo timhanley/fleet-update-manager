@@ -8,6 +8,9 @@ services:
       # Named Docker volume – persists fleet.conf, SSH keys, logs, and the
       # generated dashboard across container rebuilds and restarts.
       - fleet-data:/data
+      # Share host's D-Bus socket so libnss-mdns can use the host's avahi-daemon
+      # for .local mDNS resolution (required with network_mode: host on Linux).
+      - /run/dbus/system_bus_socket:/run/dbus/system_bus_socket
     restart: unless-stopped
     # Uncomment to pass your host SSH agent into the container so setup-ssh-access.sh
     # can use your personal key to push the fleet key to new devices.
